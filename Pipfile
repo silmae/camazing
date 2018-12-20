@@ -1,0 +1,19 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+appdirs = "*"
+genicam2 = "==0.0.0.dev5472"
+netcdf4 = "*"
+numpy = "*"
+tabulate = "*"
+toml = "*"
+xarray = "*"
+zipfile36 = "*"
+
+[requires]
+python_version = "3.7"
