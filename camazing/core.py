@@ -16,9 +16,8 @@ import tabulate
 import toml
 import xarray as xr
 
-from camazing.util import Boolean, Enumeration, Integer, Float
+import camazing.feature_types
 from camazing.util import Singleton
-from camazing.util import _types
 
 # Some cameras are incompatible with zipfile package when Python version >= 3.7
 if sys.version_info >= (3, 7):
@@ -49,6 +48,27 @@ _file_handler = logging.FileHandler(os.path.join(_log_dir, "log"))
 _file_handler.setLevel(logging.DEBUG)
 _file_handler.setFormatter(_formatter)
 logger.addHandler(_file_handler)
+
+
+def check_initialization(method):
+    """Decorator function, that checks `Camera` object is initialized
+    before executing `Camera` `method`.
+    
+    Parameters
+    ----------
+    method : method
+        Cameras `method. 
+    """
+    # If camera is not initialized, raise an error. 
+    def wrapper(self, *args, **kwargs):
+        if not self.is_initialized():
+            raise RuntimeError(
+                f"Cannot execute the function `{method.__name__}`, because "
+                "the camera is not initialized."
+            )
+        return method(self, *args, **kwargs)
+
+    return wrapper
 
 
 def get_cti_file():
@@ -99,8 +119,8 @@ def get_cti_file():
     # If execution reaches this point, file is not found and the following
     # error will be raised.
     raise FileNotFoundError(
-        "No GenICam Producer file (.cti) found from "
-        "{} or {} environment variable.".format(path, var)
+        f"No GenICam Producer file (.cti) found from {var} environment "
+        "variable."
     )
 
 
@@ -286,19 +306,46 @@ class CameraList(metaclass=Singleton):
 class Camera:
 
     class _Port(gapi.AbstractPort):
+        """A concrete implementation of port."""
 
         def __init__(self, port):
+            """Initialize the port.
+            
+            Parameters
+            ----------
+            port
+                Remote port of an device info object.
+            """
             gapi.AbstractPort.__init__(self)
             self._port = port
 
         def read(self, address, size):
+            """Read number of bytes from the port.
+
+            Parameters
+            ----------
+            address : int
+                Memory address from which we start reading the bytes.
+            size : int
+                Number of bytes to read.
+            """
             buffer = self._port.read(address, size)
             return buffer[1]
 
         def write(self, address, value):
+            """Write number of bytes to the port.
+
+            Parameters
+            ----------
+            address : int
+                Memory address from which we start writing the bytes.
+            size : int
+                Number of bytes to write.
+            """
             self._port.write(address, value)
 
         def get_access_mode(self):
+            """Get the access mode of a node."""
             return gapi.EAccessMode.RW
 
     def __init__(self, device_info):
@@ -369,6 +416,7 @@ class Camera:
              "Firmware version: " + self._device_info.tl_type]
         )
 
+    @check_initialization
     def __getitem__(self, item):
         """Get a feature from the `features` dictionary.
 
@@ -386,15 +434,56 @@ class Camera:
         KeyError
             If `item` is not found from `features`.
         """
-        return self.features[item]
+        return self._features[item]
 
+    @check_initialization
     def __contains__(self, item):
         """Checks if `item` is in `features` dictionary.
 
         bool
             `True` if key is in the `features` dictionary. Otherwise `False`.
         """
-        return item in self.features
+        return item in self._features
+
+
+    @check_initialization
+    def keys(self):
+        """Get a view of dictionary keys (names of the available features).
+
+        Returns
+        -------
+        dict_keys
+            A view of dictionary keys, or names of the available features.
+        """
+        return self._features.keys()
+
+    @check_initialization
+    def features(self):
+        """Get a view of feature objects.
+
+        Returns
+        -------
+        dict_values
+            A view of feature objects.
+
+        Notes
+        -----
+        This is same as `values()` in regular dictionaries. The `features` name
+        is used to avoid confusion, that `values()` would return the actual
+        values of the features.
+        """
+        return self._features.values()
+
+    @check_initialization
+    def items(self):
+        """Get a view of cameras items.
+
+        Returns
+        -------
+        dict_items
+            A view of cameras items.
+        """
+        return self._features.items()
 
     def is_initialized(self):
         """Check if camera is initialized.
@@ -507,18 +596,20 @@ class Camera:
             self._node_map.connect(_port, port.name)
             
             # Exclude features that are not implemented and wrap all the
-            # remaining features with wrappers, that simplify the usage of the
-            # features.
-            self.features = {}
+            # remaining features inside feature objects, that simplify the usage
+            # of the features.
+            self._features = {}
             for feature_name in dir(self._node_map):  # Iterate over features. 
                 # Get feature from the node map.
                 feature = getattr(self._node_map, feature_name)
                 feature_type = type(feature)  # Get the `genicam2` type.
                 # Exclude features that are not implemented (access mode `0`).
-                if feature_type in _types and feature.get_access_mode() > 0:
+                if (feature_type in camazing.feature_types.mapping and
+                        feature.get_access_mode() > 0):
                     # Select a proper wrapper type for feature and put it to
                     # features dictionary.
-                    self.features[feature_name] = _types[feature_type](feature)
+                    self._features[feature_name] = \
+                        camazing.feature_types.mapping[feature_type](feature)
            
             # According to GenICam SFNC v2.4 `Gain` feature optional for camera
             # implementation. The following checks if `Gain` is implemented. If
@@ -543,43 +634,63 @@ class Camera:
                 self._node_map = None
             self._device.close()
 
+    @check_initialization
     def start_acquisition(self, n_buffers=None, payload_size=None):
+        """Start image acquisition.
 
-        if not self.is_initialized:
-            raise RuntimeError("Cannot start acquisition because the camera "
-                               "is not initialized.")
-
+        Parameters
+        ----------
+        n_buffers : int
+            Number of buffers.
+        payload_size : int
+            Payload size.
+        """
         if not self.is_acquiring():
 
+            # Initilize containers for buffers, events and data streams.
             self._buffers = {}
             self._events = []
             self._data_streams = []
 
+            # Iterate over data stream IDs.
             for idx, stream_id in enumerate(self._device.data_stream_ids):
+
+                # Create a data stream and open it.
                 data_stream = self._device.create_data_stream()
                 data_stream.open(stream_id)
 
+                # An event object must be registered with `EVENT_NEW_BUFFER` in
+                # order to be notified on newly filled buffers. See section
+                # 5.2.4 of GenICam GenTL v1.5. 
                 event_token = data_stream.register_event(
                     gtl.EVENT_TYPE_LIST.EVENT_NEW_BUFFER
                 )
-
+                
+                # Add the event to our container of events.
                 self._events.append(gtl.EventManagerNewBuffer(event_token))
 
+                # If payload size is not given as a parameter, see if it is
+                # defined in the data stream or in the `PayloadSize` feature.
                 if payload_size is None:
                     if data_stream.defines_payload_size():
                         payload_size = data_stream.payload_size
                     else:
                         payload_size = self["PayloadSize"].value
-
+                
+                # Create a container for all the buffer tokens.
                 buffer_tokens = []
-
+                
+                # If the number of buffers is not given as a parameter, see
+                # if the minimum number of buffers to be announced is defined
+                # in the data stream.
                 if n_buffers is None:
                     n_buffers = data_stream.buffer_announce_min
 
                 for idx in range(n_buffers):
                     buffer = bytes(payload_size)
                     buffer_tokens.append(gtl.BufferToken(buffer, idx))
-
+                
+                # Create a container for the buffers.
                 self._buffers[data_stream] = []
 
                 for buffer_token in buffer_tokens:
@@ -589,21 +700,23 @@ class Camera:
 
                 for buffer in self._buffers[data_stream]:
                     data_stream.queue_buffer(buffer)
-
+                
+                # Start the acquisition engine, using the default behaviour.
                 data_stream.start_acquisition(
                     gtl.ACQ_START_FLAGS_LIST.ACQ_START_FLAGS_DEFAULT
                 )
-
+                
+                # Add the data stream to the list of available data streams.
                 self._data_streams.append(data_stream)
 
                 self["AcquisitionStart"].execute()
                 self._is_acquiring = True
-
                 self._pixel_format = self["PixelFormat"].value
-
                 bits_per_pixel = int(self["PixelSize"].value.strip("Bpp"))
 
-                # We need to define the datatype. E.g.
+                # We need to define the datatype used in the numpy array. So
+                # far it's not clear how to handle more exotic BPP values,
+                # like 10 or 12 bits per pixel.
                 if bits_per_pixel <= 8:
                     self._dtype =  np.uint8
                 elif bits_per_pixel <= 16:
@@ -618,46 +731,66 @@ class Camera:
                 self._frame_generator = self._get_frame_generator()
                 
                 # Not always implemented, even though this is defined as
-                # mandatory by the GenICam standard.
+                # mandatory by the GenICam standard. When acquisition is
+                # ongoing, this prevents the adjusting of features critical
+                # to the acquisition.
                 if "TLParamsLocked" in self:
                     self["TLParamsLocked"].value = 1
 
+    @check_initialization
     def stop_acquisition(self):
+        """Stop image acquisition."""
 
         if self.is_acquiring():
             self["AcquisitionStop"].execute()
 
+            # Not always implemented, even though this is defined as
+            # mandatory by the GenICam standard. When acquisition is
+            # ongoing, this prevents the adjusting of features critical
+            # to the acquisition.
             if "TLParamsLocked" in self:
                 self["TLParamsLocked"].value = 0
-
+            
+            # Flush the event queues and unregister the events.
             for event in self._events:
                 event.flush_event_queue()
                 event.unregister_event()
-
+            
+            # Clear the list of events.
             self._events.clear()
 
+            # Iterate over available data streams.
             for data_stream in self._data_streams:
 
+                # Stop the acquisition engine immediately. The Producer can
+                # return a partially filled buffer through the regular
+                # mechanism.
                 data_stream.stop_acquisition(
                     gtl.ACQ_STOP_FLAGS_LIST.ACQ_STOP_FLAGS_KILL
                 )
-
+                
+                # Discard all the buffers in the input pool and the buffers in
+                # the output queue.
                 data_stream.flush_buffer_queue(
                     gtl.ACQ_QUEUE_TYPE_LIST.ACQ_QUEUE_ALL_DISCARD
                 )
-
+                
+                # Remove announced buffers from the acquisition engine.
                 for buffer in self._buffers[data_stream]:
                     data_stream.revoke_buffer(buffer)
 
-                data_stream.close()
+                data_stream.close()  # Finally close the data stream.
 
+            # Clear the lists containing the buffers and data streams.
             self._buffers.clear()
             self._data_streams.clear()
+
             self._is_acquiring = False
             self._dtype = None
 
     def _get_frame(self, timeout=1):
 
+        # Queue buffers
         for data_stream in self._data_streams:
             for buffer in self._buffers[data_stream]:
                 data_stream.queue_buffer(buffer)
@@ -713,14 +846,15 @@ class Camera:
             self._get_frame()
             while True:
                 yield self._get_frame()
-
+    
+    @check_initialization
     def get_frame(self):
         if not self.is_acquiring():
             raise AcquisitionException("Acquisition not started.")
 
         return next(self._frame_generator)
 
-
+    @check_initialization
     def load_config(self, filepath=None):
         """Load configuration file and apply all the settings written in the
         file to the camera.
@@ -771,8 +905,8 @@ class Camera:
         while modified:
             modified = False
             for feature in list(settings):
-                if "w" in self.features[feature].access_mode:
-                    self.features[feature].value = settings[feature]
+                if "w" in self._features[feature].access_mode:
+                    self._features[feature].value = settings[feature]
                     settings.pop(feature)
                     modified = True
 
@@ -782,6 +916,7 @@ class Camera:
                 f"features:\n\n{settings}\n\nThese features don't seem to be "
                 "writable after loading all the other settings.")
 
+    @check_initialization
     def dump_config(self, filepath=None, overwrite=False):
         """Dump the current settings of the camera to a configuration file.
         
@@ -818,8 +953,11 @@ class Camera:
         # Iterate over camera features and select only features which are 
         # writable and which can be written (e.g. `Command` features don't have
         # a value).
-        valid_types = (Boolean, Enumeration, Float, Integer)
-        for feature_name, feature in self.features.items():
+        valid_types = (camazing.feature_types.Boolean,
+                       camazing.feature_types.Enumeration,
+                       camazing.feature_types.Float,
+                       camazing.feature_types.Integer)
+        for feature_name, feature in self._features.items():
             if type(feature) in valid_types and "w" in feature.access_mode:
                 settings[feature_name] = feature.value
         
