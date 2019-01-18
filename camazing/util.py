@@ -10,10 +10,6 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-class AccessModeError(Exception):
-    pass
-
-
 def expect_sorted(array):
     """Raises an exception if `array` if not a sorted list/array. Doesn't do
     anything otherwise.

@@ -4,6 +4,10 @@ from genicam2.genapi import IBoolean, IEnumeration, IInteger, IFloat, \
                             IString, ICommand
 
 
+class AccessModeError(Exception):
+    pass
+
+
 class Feature(abc.ABC):
     """A base class for GenICam GenApi node wrappers."""
 

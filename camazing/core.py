@@ -693,13 +693,11 @@ class Camera:
                 # Create a container for the buffers.
                 self._buffers[data_stream] = []
 
+                # Announce buffers.
                 for buffer_token in buffer_tokens:
                     self._buffers[data_stream].append(
                         data_stream.announce_buffer(buffer_token)
                     )
-
-                for buffer in self._buffers[data_stream]:
-                    data_stream.queue_buffer(buffer)
                 
                 # Start the acquisition engine, using the default behaviour.
                 data_stream.start_acquisition(
@@ -711,12 +709,16 @@ class Camera:
 
                 self["AcquisitionStart"].execute()
                 self._is_acquiring = True
+
+                # The pixel format doesn't change during image acquisition, so
+                # we can save pixel format to attribute, and access it faster
+                # later.
                 self._pixel_format = self["PixelFormat"].value
-                bits_per_pixel = int(self["PixelSize"].value.strip("Bpp"))
 
                 # We need to define the datatype used in the numpy array. So
                 # far it's not clear how to handle more exotic BPP values,
                 # like 10 or 12 bits per pixel.
+                bits_per_pixel = int(self["PixelSize"].value.strip("Bpp"))
                 if bits_per_pixel <= 8:
                     self._dtype =  np.uint8
                 elif bits_per_pixel <= 16:
@@ -739,8 +741,13 @@ class Camera:
 
     @check_initialization
     def stop_acquisition(self):
-        """Stop image acquisition."""
-
+        """Stop image acquisition.
+        
+        Notes
+        -----
+        If acquisition has not been started, this function won't do anything.
+        """
+        # If acquisition is on, stop the acquisition. Otherwise do nothing.
         if self.is_acquiring():
             self["AcquisitionStop"].execute()
 
@@ -789,6 +796,7 @@ class Camera:
             self._dtype = None
 
     def _get_frame(self, timeout=1):
+        """Helper function"""
 
         # Queue buffers
         for data_stream in self._data_streams:
@@ -797,16 +805,25 @@ class Camera:
 
         buffer = None
 
+        # Update the event data. There should be queued buffers available.
         for event in self._events:
             while buffer is None:
                 if event.num_in_queue > 0:
                     event.update_event_data(timeout)
                     buffer = event.buffer
 
-        if buffer.payload_type == gtl.PAYLOADTYPE_INFO_IDS.PAYLOAD_TYPE_UNKNOWN:
+        # Check the payload type, and decide what to do with it. Payload types
+        # are documented in section 6.4.4.5 in the version 1.5 of the GenICam
+        # GenTL standard.
+        # TODO: Build support for more 
+        # When the payload type is unknown, the data in it can be handled as
+        # raw data.
+        if (buffer.payload_type ==
+                gtl.PAYLOADTYPE_INFO_IDS.PAYLOAD_TYPE_UNKNOWN):
             width = self["Width"].value
             height = self["Height"].value
-        elif buffer.payload_type == gtl.PAYLOADTYPE_INFO_IDS.PAYLOAD_TYPE_IMAGE:
+        elif (buffer.payload_type ==
+                gtl.PAYLOADTYPE_INFO_IDS.PAYLOAD_TYPE_IMAGE):
             width = buffer.width
             height = buffer.height
         else:
