@@ -20,6 +20,8 @@ from camazing.util import Boolean, Enumeration, Integer, Float
 from camazing.util import Singleton
 from camazing.util import _types
 
+from camazing.pixelformats import get_decoder
+
 # Some cameras are incompatible with zipfile package when Python version >= 3.7
 if sys.version_info >= (3, 7):
     import zipfile36 as zipfile
@@ -605,19 +607,8 @@ class Camera:
 
                 self._pixel_format = self["PixelFormat"].value
 
-                bits_per_pixel = int(self["PixelSize"].value.strip("Bpp"))
-
-                # We need to define the datatype. E.g.
-                if bits_per_pixel <= 8:
-                    self._dtype = np.uint8
-                elif bits_per_pixel <= 16:
-                    self._dtype = np.uint16
-                elif bits_per_pixel <= 32:
-                    self._dtype = np.uint32
-                elif bits_per_pixel <= 64:
-                    self._dtype = np.uint64
-                else:
-                    raise Exception("Unsupported array data type.")
+                # Determine the decoder for the pixel format
+                self._buffer_decoder = get_decoder(self._pixel_format)
 
                 self._frame_generator = self._get_frame_generator()
 
@@ -658,7 +649,7 @@ class Camera:
             self._buffers.clear()
             self._data_streams.clear()
             self._is_acquiring = False
-            self._dtype = None
+            self._buffer_decoder = None
 
     def _get_frame(self, timeout=1):
 
@@ -683,11 +674,6 @@ class Camera:
         else:
             raise Exception("Invalid payload type.")
 
-        data = np.frombuffer(
-            buffer.raw_buffer,
-            self._dtype
-        ).reshape(height, width).copy()
-
         coords = {
             "x": ("x", np.arange(0, width)),
             "y": ("y", np.arange(0, height)),
@@ -695,13 +681,27 @@ class Camera:
             "exposure_time": self["ExposureTime"].value
         }
 
+        if 'RGB' in self._pixel_format:
+            dims = ('y', 'x', 'colour')
+            coords['colour'] = list('RGB')
+        elif 'YUV' in self._pixel_format:
+            dims = ('y', 'x', 'colour')
+            coords['colour'] = list('YUV')
+        elif 'YCbCr' in self._pixel_format:
+            dims = ('y', 'x', 'colour')
+            coords['colour'] = ['Y', 'Cb', 'Cr']
+        else:
+            dims = ('y', 'x')
+
+        data = self._buffer_decoder(buffer.raw_buffer, (height, width))
+
         if self._has_gain:
             coords["gain"] = self["Gain"].value
 
         frame = xr.DataArray(
             data,
             name="frame",
-            dims=["y", "x"],
+            dims=dims,
             coords=coords,
             attrs={"pixel_format": self._pixel_format}
         )
