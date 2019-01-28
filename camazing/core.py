@@ -689,8 +689,8 @@ class Camera:
         ).reshape(height, width).copy()
 
         coords = {
-            "x": ("width", list(range(0, width))),
-            "y": ("height", list(range(0, height))),
+            "x": ("x", np.arange(0, width)),
+            "y": ("y", np.arange(0, height)),
             "timestamp": dt.datetime.today().timestamp(),
             "exposure_time": self["ExposureTime"].value
         }
@@ -701,7 +701,7 @@ class Camera:
         frame = xr.DataArray(
             data,
             name="frame",
-            dims=["height", "width"],
+            dims=["y", "x"],
             coords=coords,
             attrs={"pixel_format": self._pixel_format}
         )
