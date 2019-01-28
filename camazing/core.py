@@ -51,6 +51,10 @@ _file_handler.setFormatter(_formatter)
 logger.addHandler(_file_handler)
 
 
+class AcquisitionException(Exception):
+    pass
+
+
 def get_cti_file():
     """Tries to find an existing GenICam Producer file.
 
@@ -75,7 +79,7 @@ def get_cti_file():
     arch = platform.architecture()[0]  # Get the platform architecture.
     var = "GENICAM_GENTL64_PATH" if arch == "64bit" else "GENICAM_GENTL32_PATH"
     dir = os.getenv(var)  # Get the directory path in the environment variable.
-    
+
     if dir:  # Check that the environment variable contains the directory path.
         for file in os.listdir(dir):
             # If `file` has extension `.cti`, we have found the CTI file.
@@ -95,19 +99,19 @@ def get_cti_file():
             "Environment variable `{}` is not set.".format(var) +
             "Make sure you have a valid GenICam Producer installed."
         )
-    
+
     # If execution reaches this point, file is not found and the following
     # error will be raised.
     raise FileNotFoundError(
         "No GenICam Producer file (.cti) found from "
-        "{} or {} environment variable.".format(path, var)
+        "{} or {} environment variable.".format(filepath, var)
     )
 
 
 class CameraList(metaclass=Singleton):
     """List of all the cameras connected to the machine."""
-    
-    _headers=["Vendor", "Model", "Serial number", "TL type"]
+
+    _headers = ["Vendor", "Model", "Serial number", "TL type"]
 
     def __init__(self, cti_file=None):
         """Initializes the `CameraList`.
@@ -182,7 +186,7 @@ class CameraList(metaclass=Singleton):
                 )
             )
             interface.close()
-            
+
         self._system.close()
         logger.debug("Deinitialized GenICam System.")
         self._producer.close()
@@ -194,7 +198,7 @@ class CameraList(metaclass=Singleton):
         Returns
         -------
         str
-            Tabular representation of the `CameraList`.            
+            Tabular representation of the `CameraList`.
         """
         return tabulate.tabulate(
             self._repr_items,
@@ -320,7 +324,7 @@ class Camera:
         self._device_info = device_info
         self._device = device_info.create_device()
 
-        # Needs to be defined in order to get `finalize` method working. 
+        # Needs to be defined in order to get `finalize` method working.
         self._node_map = None
 
         # Needs to be defined here in order to get `is_acquiring` method
@@ -356,7 +360,7 @@ class Camera:
         """More useful representation for the `Camera` object.
 
         Shows the camera vendor, model, serial number and firmware version.
-        
+
         Notes
         -----
         If someone is concerned that one cannot see the `Camera` object id
@@ -433,7 +437,7 @@ class Camera:
         """
         if not self.is_initialized():
             # Open device in such way, that only host has access to the device.
-            # The process has read-and-write access to the device. This access 
+            # The process has read-and-write access to the device. This access
             # flag is described in section 6.4.3.1 of the GenICam GenTL
             # Standard (version 1.5).
             self._device.open(
@@ -465,7 +469,7 @@ class Camera:
                     xml_files["http"] = splitted_url
                 else:
                     raise RuntimeError("Invalid URL.")
-            
+
             if xml_files:  # Check that at least one XML file is found.
                 # XML location preference:
                 #   1. module register map
@@ -505,12 +509,12 @@ class Camera:
             self._node_map.load_xml_from_string(content)
             # Connect the port to the node map instance.
             self._node_map.connect(_port, port.name)
-            
+
             # Exclude features that are not implemented and wrap all the
             # remaining features with wrappers, that simplify the usage of the
             # features.
             self.features = {}
-            for feature_name in dir(self._node_map):  # Iterate over features. 
+            for feature_name in dir(self._node_map):  # Iterate over features.
                 # Get feature from the node map.
                 feature = getattr(self._node_map, feature_name)
                 feature_type = type(feature)  # Get the `genicam2` type.
@@ -519,7 +523,7 @@ class Camera:
                     # Select a proper wrapper type for feature and put it to
                     # features dictionary.
                     self.features[feature_name] = _types[feature_type](feature)
-           
+
             # According to GenICam SFNC v2.4 `Gain` feature optional for camera
             # implementation. The following checks if `Gain` is implemented. If
             # `Gain` is implemented, it can be included in the `DataArray` when
@@ -528,7 +532,7 @@ class Camera:
 
     def finalize(self):
         """Free the camera resources.
-        
+
         Stops the acquisition if it's not already stopped. Also disconnect the
         node map and close the connection to the device.
         """
@@ -605,9 +609,9 @@ class Camera:
 
                 # We need to define the datatype. E.g.
                 if bits_per_pixel <= 8:
-                    self._dtype =  np.uint8
+                    self._dtype = np.uint8
                 elif bits_per_pixel <= 16:
-                    self._dtype =  np.uint16
+                    self._dtype = np.uint16
                 elif bits_per_pixel <= 32:
                     self._dtype = np.uint32
                 elif bits_per_pixel <= 64:
@@ -616,7 +620,7 @@ class Camera:
                     raise Exception("Unsupported array data type.")
 
                 self._frame_generator = self._get_frame_generator()
-                
+
                 # Not always implemented, even though this is defined as
                 # mandatory by the GenICam standard.
                 if "TLParamsLocked" in self:
@@ -690,7 +694,7 @@ class Camera:
             "timestamp": dt.datetime.today().timestamp(),
             "exposure_time": self["ExposureTime"].value
         }
-        
+
         if self._has_gain:
             coords["gain"] = self["Gain"].value
 
@@ -720,11 +724,10 @@ class Camera:
 
         return next(self._frame_generator)
 
-
     def load_config(self, filepath=None):
         """Load configuration file and apply all the settings written in the
         file to the camera.
-        
+
         The function assumes that the `filepath` given as a parameter contains
         a TOML configuration file (doesn't check the file extension) and starts
         parsing it. If no configuration file is passed as a parameter, the
@@ -778,13 +781,14 @@ class Camera:
 
         # Warning if there are any unloaded feature values.
         if settings:
-            warnings.warn(f"Couldn't load the values of the following "
+            warnings.warn(
+                f"Couldn't load the values of the following "
                 f"features:\n\n{settings}\n\nThese features don't seem to be "
                 "writable after loading all the other settings.")
 
     def dump_config(self, filepath=None, overwrite=False):
         """Dump the current settings of the camera to a configuration file.
-        
+
         If no `filepath` is passed as a parameter, the functions tries to write
         the file to the default location. The existing file won't be
         overwritten unless the `overwrite` parameter is set to ``True``.
@@ -802,27 +806,26 @@ class Camera:
         if filepath is None:
             filepath = _config_dir + "/camera.toml"
 
-        
         # If file exists with and `overwrite` parameter is not set to "
         # `True`, raise an exception.
         if os.path.isfile(filepath) and not overwrite:
             raise FileExistsError(
                 "Cannot dump camera settings to a file, because file "
-                "`{filepath}` already exists.".format(filepath) +
+                "`{}` already exists.".format(filepath) +
                 "If you wan't to overwrite the existing file, set the "
                 "`overwrite` parameter to `True`."
             )
 
         settings = {}
-        
-        # Iterate over camera features and select only features which are 
+
+        # Iterate over camera features and select only features which are
         # writable and which can be written (e.g. `Command` features don't have
         # a value).
         valid_types = (Boolean, Enumeration, Float, Integer)
         for feature_name, feature in self.features.items():
             if type(feature) in valid_types and "w" in feature.access_mode:
                 settings[feature_name] = feature.value
-        
+
         with open(filepath, "w") as file:
             toml.dump(settings, file)  # Dump the settings to a file.
 
