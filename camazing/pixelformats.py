@@ -5,6 +5,28 @@ class PixelFormatError(Exception):
     pass
 
 
+def get_valid_range(pxformat):
+    """Return the valid range of values for a given pixel format.
+
+    Parameters
+    ----------
+    pxformat: str
+        Pixel format as given by cameras GenICam PixelFormat feature.
+
+    Returns
+    ------
+    pair of numbers
+        A tuple (min_value, max_value) with the same type as the decoded
+        pixel format.
+    """
+    try:
+        valid_range = _ranges[pxformat]
+    except KeyError:
+        raise PixelFormatError(f'No range found for the pixel format `{pxformat}')
+
+    return valid_range
+
+
 def get_decoder(pxformat):
     """Return a numpy decoder for a given GenICam pixel format.
 
@@ -56,3 +78,9 @@ _decoders = {
     'BayerGB12': decode_raw(np.uint16),
     'RGB8': decode_RGB(np.uint8),
     }
+
+_ranges = {
+    'BayerGB8': (np.uint8(0), np.uint8(255)),
+    'BayerGB12': (np.uint16(0), np.uint16(4096)),
+    'RGB8': (np.uint8(0), np.uint8(255)),
+}
