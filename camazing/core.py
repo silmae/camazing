@@ -30,8 +30,8 @@ else:
 
 # Define paths for configuration and log files. `appdirs` package gives us good
 # defaults for different operating systems.
-_config_dir = appdirs.user_config_dir("spectracular", False, None, False)
-_log_dir = appdirs.user_log_dir("spectracular", False, None, False)
+_config_dir = appdirs.user_config_dir("camazing", False, None, False)
+_log_dir = appdirs.user_log_dir("camazing", False, None, False)
 
 # If directory for configuration file doesn't exist, create it.
 if not os.path.isdir(_config_dir):
