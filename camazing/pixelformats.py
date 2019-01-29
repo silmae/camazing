@@ -15,8 +15,8 @@ def get_valid_range(pxformat):
 
     Returns
     ------
-    pair of numbers
-        A tuple (min_value, max_value) with the same type as the decoded
+    np.array
+        A vector of [min_value, max_value] with the same type as the decoded
         pixel format.
     """
     try:
@@ -80,7 +80,7 @@ _decoders = {
     }
 
 _ranges = {
-    'BayerGB8': (np.uint8(0), np.uint8(255)),
-    'BayerGB12': (np.uint16(0), np.uint16(4096)),
-    'RGB8': (np.uint8(0), np.uint8(255)),
+    'BayerGB8': np.uint8([0, 255]),
+    'BayerGB12': np.uint16([0, 4096]),
+    'RGB8': np.uint8([0, 255]),
 }
