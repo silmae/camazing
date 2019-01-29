@@ -45,7 +45,7 @@ if not os.path.isdir(_log_dir):
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 _formatter = logging.Formatter(
-    "%(asctime)s  %>(levelname)s - %(message)s"
+    "%(asctime)s  %(levelname)s - %(message)s"
 )
 _file_handler = logging.FileHandler(os.path.join(_log_dir, "log"))
 _file_handler.setLevel(logging.DEBUG)
