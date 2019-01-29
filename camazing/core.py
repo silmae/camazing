@@ -795,16 +795,27 @@ class Camera:
 
         Parameters
         ----------
-        filepath : str or None
+        filepath : str or None, optional
             A file path where the configuration file will be written. If
-            ``None``, the file will be written to the default location.
+            ``None``, the file will be written to the default location
+            with the name
+            "<Vendor>_<Model>_<Serial number>_<TL type>.toml"
+            as given by the GenICam device info.
+
         overwrite : bool
             True if one wishes to overwrite the existing file.
         """
         # If `filepath` is None, dump the configuration file to the default
         # location.
         if filepath is None:
-            filepath = _config_dir + "/camera.toml"
+            camfile = '_'.join(
+                    [self._device_info.vendor,
+                     self._device_info.model,
+                     self._device_info.serial_number,
+                     self._device_info.tl_type]
+                    ) + '.toml'
+            filepath = os.path.join(_config_dir, camfile)
+
 
         # If file exists with and `overwrite` parameter is not set to "
         # `True`, raise an exception.
