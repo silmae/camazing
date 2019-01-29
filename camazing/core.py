@@ -526,12 +526,6 @@ class Camera:
                     # features dictionary.
                     self.features[feature_name] = _types[feature_type](feature)
 
-            # According to GenICam SFNC v2.4 `Gain` feature optional for camera
-            # implementation. The following checks if `Gain` is implemented. If
-            # `Gain` is implemented, it can be included in the `DataArray` when
-            # picture is taken.
-            self._has_gain = "Gain" in self
-
     def finalize(self):
         """Free the camera resources.
 
@@ -549,7 +543,7 @@ class Camera:
                 self._node_map = None
             self._device.close()
 
-    def start_acquisition(self, n_buffers=None, payload_size=None):
+    def start_acquisition(self, n_buffers=None, payload_size=None, meta=None):
 
         if not self.is_initialized:
             raise RuntimeError("Cannot start acquisition because the camera "
@@ -610,7 +604,7 @@ class Camera:
                 # Determine the decoder for the pixel format
                 self._buffer_decoder = get_decoder(self._pixel_format)
 
-                self._frame_generator = self._get_frame_generator()
+                self._frame_generator = self._get_frame_generator(meta=meta)
 
                 # Not always implemented, even though this is defined as
                 # mandatory by the GenICam standard.
@@ -674,11 +668,19 @@ class Camera:
         else:
             raise Exception("Invalid payload type.")
 
+        data = self._buffer_decoder(buffer.raw_buffer, (height, width))
+
+        return data
+
+    def _get_frame_with_meta(self, meta=None):
+        """Fetch a frame and add metadata from the camera."""
+
+        data = self._get_frame()
+        height, width = data.shape[0], data.shape[1]
         coords = {
             "x": ("x", np.arange(0, width) + 0.5),
             "y": ("y", np.arange(0, height) + 0.5),
             "timestamp": dt.datetime.today().timestamp(),
-            "exposure_time": self["ExposureTime"].value
         }
 
         if 'RGB' in self._pixel_format:
@@ -693,30 +695,28 @@ class Camera:
         else:
             dims = ('y', 'x')
 
-        data = self._buffer_decoder(buffer.raw_buffer, (height, width))
-
-        if self._has_gain:
-            coords["gain"] = self["Gain"].value
+        # Add requested metadata as coordinates
+        if meta:
+            coords.update({k: self.features[k].value for k in meta})
 
         frame = xr.DataArray(
             data,
             name="frame",
             dims=dims,
-            coords=coords,
-            attrs={"pixel_format": self._pixel_format}
+            coords=coords
         )
 
         return frame
 
-    def _get_frame_generator(self):
+    def _get_frame_generator(self, meta=None):
         if self["TriggerMode"].value == "On" and self["TriggerSource"].value == "Software":
             while True:
                 self["TriggerSoftware"].execute()
-                yield self._get_frame()
+                yield self._get_frame_with_meta(meta=meta)
         else:
-            self._get_frame()
+            self._get_frame_with_meta(meta=meta)
             while True:
-                yield self._get_frame()
+                yield self._get_frame_with_meta(meta=meta)
 
     def get_frame(self):
         if not self.is_acquiring():
