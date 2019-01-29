@@ -736,9 +736,12 @@ class Camera:
 
         Parameters
         ----------
-        filepath : str or None
+        filepath : str or None, optional
             A file path to a TOML configuration file containing user given
-            settings for the camera.
+            settings for the camera. If not given, will attempt to find
+            a configuration from the default directory with the name
+            "<Vendor>_<Model>_<Serial number>_<TL type>.toml"
+            as given by the GenICam device info.
 
         Raises
         ------
@@ -758,7 +761,7 @@ class Camera:
         # If `filepath` is None, load the configuration file from the default
         # location.
         if filepath is None:
-            filepath = os.path.join(_config_dir, "camera.toml")
+            filepath = self._default_config()
 
         with open(filepath, "r") as file:
             settings = toml.load(file)  # Load the settings from a file.
@@ -786,6 +789,15 @@ class Camera:
                 f"features:\n\n{settings}\n\nThese features don't seem to be "
                 "writable after loading all the other settings.")
 
+    def _default_config(self):
+        configfile = '_'.join(
+            [self._device_info.vendor,
+             self._device_info.model,
+             self._device_info.serial_number,
+             self._device_info.tl_type]
+             ) + '.toml'
+        return os.path.join(_config_dir, configfile)
+
     def dump_config(self, filepath=None, overwrite=False):
         """Dump the current settings of the camera to a configuration file.
 
@@ -808,14 +820,7 @@ class Camera:
         # If `filepath` is None, dump the configuration file to the default
         # location.
         if filepath is None:
-            camfile = '_'.join(
-                    [self._device_info.vendor,
-                     self._device_info.model,
-                     self._device_info.serial_number,
-                     self._device_info.tl_type]
-                    ) + '.toml'
-            filepath = os.path.join(_config_dir, camfile)
-
+            filepath = self._default_config()
 
         # If file exists with and `overwrite` parameter is not set to "
         # `True`, raise an exception.
