@@ -605,7 +605,13 @@ class Camera:
                 self._buffer_decoder = get_decoder(self._pixel_format)
                 self._image_range = get_valid_range(self._pixel_format)
 
-                self._frame_generator = self._get_frame_generator(meta=meta)
+                # Keep some meta by default, if available
+                self._meta = []
+                for feature in ['Gain', 'ExposureTime', 'PixelFormat', 'PixelColorFilter']:
+                    if feature in self.features:
+                        self._meta.append(feature)
+
+                self._frame_generator = self._get_frame_generator()
 
                 # Not always implemented, even though this is defined as
                 # mandatory by the GenICam standard.
@@ -646,6 +652,7 @@ class Camera:
             self._is_acquiring = False
             self._buffer_decoder = None
             self._image_range = None
+            self._meta = None
 
     def _get_frame(self, timeout=1):
 
@@ -674,7 +681,7 @@ class Camera:
 
         return data
 
-    def _get_frame_with_meta(self, meta=None):
+    def _get_frame_with_meta(self):
         """Fetch a frame and add metadata from the camera."""
 
         data = self._get_frame()
@@ -697,9 +704,9 @@ class Camera:
         else:
             dims = ('y', 'x')
 
-        # Add requested metadata as coordinates
-        if meta:
-            coords.update({k: self.features[k].value for k in meta})
+        # Add metadata as coordinates
+        if self._meta:
+            coords.update({k: self.features[k].value for k in self._meta})
 
         frame = xr.DataArray(
             data,
@@ -713,15 +720,15 @@ class Camera:
 
         return frame
 
-    def _get_frame_generator(self, meta=None):
+    def _get_frame_generator(self):
         if self["TriggerMode"].value == "On" and self["TriggerSource"].value == "Software":
             while True:
                 self["TriggerSoftware"].execute()
-                yield self._get_frame_with_meta(meta=meta)
+                yield self._get_frame_with_meta()
         else:
-            self._get_frame_with_meta(meta=meta)
+            self._get_frame_with_meta()
             while True:
-                yield self._get_frame_with_meta(meta=meta)
+                yield self._get_frame_with_meta()
 
     def get_frame(self):
         if not self.is_acquiring():
