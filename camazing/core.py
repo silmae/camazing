@@ -675,8 +675,8 @@ class Camera:
             raise Exception("Invalid payload type.")
 
         coords = {
-            "x": ("x", np.arange(0, width)),
-            "y": ("y", np.arange(0, height)),
+            "x": ("x", np.arange(0, width) + 0.5),
+            "y": ("y", np.arange(0, height) + 0.5),
             "timestamp": dt.datetime.today().timestamp(),
             "exposure_time": self["ExposureTime"].value
         }
