@@ -20,7 +20,7 @@ from camazing.util import Boolean, Enumeration, Integer, Float
 from camazing.util import Singleton
 from camazing.util import _types
 
-from camazing.pixelformats import get_decoder
+from camazing.pixelformats import get_decoder, get_valid_range
 
 # Some cameras are incompatible with zipfile package when Python version >= 3.7
 if sys.version_info >= (3, 7):
@@ -601,8 +601,9 @@ class Camera:
 
                 self._pixel_format = self["PixelFormat"].value
 
-                # Determine the decoder for the pixel format
+                # Determine the decoder and range for the pixel format
                 self._buffer_decoder = get_decoder(self._pixel_format)
+                self._image_range = get_valid_range(self._pixel_format)
 
                 self._frame_generator = self._get_frame_generator(meta=meta)
 
@@ -644,6 +645,7 @@ class Camera:
             self._data_streams.clear()
             self._is_acquiring = False
             self._buffer_decoder = None
+            self._image_range = None
 
     def _get_frame(self, timeout=1):
 
@@ -703,7 +705,10 @@ class Camera:
             data,
             name="frame",
             dims=dims,
-            coords=coords
+            coords=coords,
+            attrs={
+                'valid_range': self._image_range,
+                }
         )
 
         return frame
