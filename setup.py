@@ -12,6 +12,7 @@ requirements = [
     "xarray",
     "toml",
     "tabulate",
+    "zipfile36",
 ]
 
 setuptools.setup(
