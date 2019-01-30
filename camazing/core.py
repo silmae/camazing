@@ -6,7 +6,6 @@ import os
 import platform
 import urllib
 import sys
-import warnings
 
 import appdirs
 import genicam2.gentl as gtl
@@ -43,6 +42,7 @@ if not os.path.isdir(_log_dir):
 
 # Initialize the logger. By default the logging level will be `INFO`.
 logger = logging.getLogger(__name__)
+
 
 class AcquisitionException(Exception):
     pass
@@ -777,13 +777,18 @@ class Camera:
         # currently writable. When `GainAuto` is applied on first iteration,
         # we can apply `Gain` on the next iteration, etc.
         modified = True
+        errors = []
         while modified:
             modified = False
             for feature in list(settings):
                 if "w" in self.features[feature].access_mode:
-                    self.features[feature].value = settings[feature]
-                    settings.pop(feature)
-                    modified = True
+                    try:
+                        self.features[feature].value = settings[feature]
+                        settings.pop(feature)
+                        modified = True
+                    except ValueError as e:
+                        errors.append(e)
+                        logging.warning(f'Could not set value while iterating config file: {e}')
 
         # Warning if there are any unloaded feature values.
         if settings:
@@ -791,6 +796,11 @@ class Camera:
                 f"Couldn't load the values of the following "
                 f"features:\n\n{settings}\n\nThese features don't seem to be "
                 "writable after loading all the other settings.")
+        if errors:
+            logging.warning(
+                f"Got following errors while trying set values "
+                f"from the config file:"
+                f"\n\n{errors}")
 
         logging.info(f'Finished loading settings from `{filepath}`.')
 
