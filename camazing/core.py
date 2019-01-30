@@ -43,15 +43,6 @@ if not os.path.isdir(_log_dir):
 
 # Initialize the logger. By default the logging level will be `INFO`.
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-_formatter = logging.Formatter(
-    "%(asctime)s  %(levelname)s - %(message)s"
-)
-_file_handler = logging.FileHandler(os.path.join(_log_dir, "log"))
-_file_handler.setLevel(logging.DEBUG)
-_file_handler.setFormatter(_formatter)
-logger.addHandler(_file_handler)
-
 
 class AcquisitionException(Exception):
     pass
@@ -796,10 +787,12 @@ class Camera:
 
         # Warning if there are any unloaded feature values.
         if settings:
-            warnings.warn(
+            logging.warning(
                 f"Couldn't load the values of the following "
                 f"features:\n\n{settings}\n\nThese features don't seem to be "
                 "writable after loading all the other settings.")
+
+        logging.info(f'Finished loading settings from `{filepath}`.')
 
     def _default_config(self):
         configfile = '_'.join(
@@ -843,6 +836,7 @@ class Camera:
                 "If you wan't to overwrite the existing file, set the "
                 "`overwrite` parameter to `True`."
             )
+            logging.error(f'Configuration file {filepath} already exists')
 
         settings = {}
 
