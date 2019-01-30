@@ -77,10 +77,14 @@ _decoders = {
     'BayerGB8': decode_raw(np.uint8),
     'BayerGB12': decode_raw(np.uint16),
     'RGB8': decode_RGB(np.uint8),
+    'Mono8': decode_raw(np.uint8),
+    'Mono16': decode_raw(np.uint16),
     }
 
 _ranges = {
     'BayerGB8': np.uint8([0, 255]),
     'BayerGB12': np.uint16([0, 4096]),
     'RGB8': np.uint8([0, 255]),
+    'Mono8': np.uint8([0, 255]),
+    'Mono16': np.uint16([0, 65535]),
 }
