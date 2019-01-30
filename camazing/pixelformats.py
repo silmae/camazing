@@ -83,8 +83,8 @@ _decoders = {
 
 _ranges = {
     'BayerGB8': np.uint8([0, 255]),
-    'BayerGB12': np.uint16([0, 4096]),
+    'BayerGB12': np.uint16([0, 4095]),
     'RGB8': np.uint8([0, 255]),
     'Mono8': np.uint8([0, 255]),
     'Mono16': np.uint16([0, 65535]),
-}
+    }
