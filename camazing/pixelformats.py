@@ -43,7 +43,7 @@ def get_decoder(pxformat):
     try:
         decoder = _decoders[pxformat]
     except KeyError:
-        raise PixelFormatError(f'No decoder for the pixel format `{pxformat}')
+        raise PixelFormatError(f'No decoder for the pixel format `{pxformat}`')
 
     return decoder
 
@@ -74,16 +74,20 @@ def decode_YCbCr422_8():
 
 
 _decoders = {
+    'BayerRG8': decode_raw(np.uint8),
     'BayerGB8': decode_raw(np.uint8),
     'BayerGB12': decode_raw(np.uint16),
+    'BayerRG16': decode_raw(np.uint16),
     'RGB8': decode_RGB(np.uint8),
     'Mono8': decode_raw(np.uint8),
     'Mono16': decode_raw(np.uint16),
     }
 
 _ranges = {
+    'BayerRG8': np.uint8([0, 255]),
     'BayerGB8': np.uint8([0, 255]),
     'BayerGB12': np.uint16([0, 4095]),
+    'BayerRG16': np.uint16([0, 65535]),
     'RGB8': np.uint8([0, 255]),
     'Mono8': np.uint8([0, 255]),
     'Mono16': np.uint16([0, 65535]),
