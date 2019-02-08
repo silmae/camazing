@@ -1,4 +1,5 @@
-import abc
+"""Miscellaneous utility functions and classes."""
+
 
 class Singleton(type):
 
@@ -89,6 +90,3 @@ def get_feature_wrapper(node):
         return Command
     else:
         return None
-
-
-

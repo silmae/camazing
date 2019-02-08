@@ -2,6 +2,7 @@ import abc
 
 from genicam2.genapi import IBoolean, IEnumeration, IInteger, IFloat, \
                             IString, ICommand
+from .util import to_bool
 
 
 class AccessModeError(Exception):
@@ -257,6 +258,7 @@ class String(Valuable):
     def _set_value(self, value):
         value = str(value)
         self._feature.value = value
+
 
 mapping = {
     IBoolean: Boolean,

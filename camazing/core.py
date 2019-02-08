@@ -17,7 +17,6 @@ import xarray as xr
 
 import camazing.feature_types
 from camazing.util import Singleton
-
 from camazing.pixelformats import get_decoder, get_valid_range
 
 # Some cameras are incompatible with zipfile package when Python version >= 3.7
@@ -26,20 +25,14 @@ if sys.version_info >= (3, 7):
 else:
     import zipfile
 
-# Define paths for configuration and log files. `appdirs` package gives us good
-# defaults for different operating systems.
+# Define a default configuration directory using appdirs.
 _config_dir = appdirs.user_config_dir("camazing", False, None, False)
-_log_dir = appdirs.user_log_dir("camazing", False, None, False)
 
 # If directory for configuration file doesn't exist, create it.
 if not os.path.isdir(_config_dir):
     os.makedirs(_config_dir)
 
-# If directory for log file doesn't exist, create it.
-if not os.path.isdir(_log_dir):
-    os.makedirs(_log_dir)
-
-# Initialize the logger. By default the logging level will be `INFO`.
+# Initialize the logger.
 logger = logging.getLogger(__name__)
 
 
@@ -50,13 +43,13 @@ class AcquisitionException(Exception):
 def check_initialization(method):
     """Decorator function, that checks `Camera` object is initialized
     before executing `Camera` `method`.
-    
+
     Parameters
     ----------
     method : method
-        Cameras `method. 
+        Cameras `method.
     """
-    # If camera is not initialized, raise an error. 
+    # If camera is not initialized, raise an error.
     def wrapper(self, *args, **kwargs):
         if not self.is_initialized():
             raise RuntimeError(
@@ -307,7 +300,7 @@ class Camera:
 
         def __init__(self, port):
             """Initialize the port.
-            
+
             Parameters
             ----------
             port
@@ -442,7 +435,6 @@ class Camera:
         """
         return item in self._features
 
-
     @check_initialization
     def keys(self):
         """Get a view of dictionary keys (names of the available features).
@@ -566,7 +558,8 @@ class Camera:
                     with urllib.request.urlopen(xml_files["http"]) as file:
                         content = file.read()
             else:  # If no XML file is found, raise an exception.
-                raise FileNotFoundError("No GenICam XML description file found.")
+                raise FileNotFoundError(
+                        "No GenICam XML description file found.")
 
             # Create a BytesIO stream object using the `content` buffer.
             file_content = io.BytesIO(content)
