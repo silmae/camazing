@@ -11,20 +11,6 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-def expect_sorted(array):
-    """Raises an exception if `array` if not a sorted list/array. Doesn't do
-    anything otherwise.
-
-    Raises
-    ------
-    ValueError
-        If the given list/array is not sorted.
-    """
-    if not all([array[i] < array[i+1] for i in range(len(array) - 1)]):
-        raise ValueError("Expected a sorted list/array, but the given "
-                         "list/array is unsorted.")
-
-
 def to_bool(value):
     """A slight modification of bool(). This function converts string literals
     'True' and 'False' to boolean values accordingly.
