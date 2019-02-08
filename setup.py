@@ -3,19 +3,16 @@
 
 import setuptools
 
-with open("README.md", "r") as fh:
+with open("README.md", "r", encoding='utf-8') as fh:
     long_description = fh.read()
 
 requirements = [
-    "appdirs",
     "genicam2",
-    "netcdf4",
     "numpy",
-    "tabulate",
-    "toml",
     "xarray",
-    "zipfile36"
-]
+    "toml",
+    "tabulate",
+    "zipfile36",
 
 setuptools.setup(
     name = "camazing",
