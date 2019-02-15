@@ -1006,6 +1006,19 @@ class Camera:
         return os.path.join(_config_dir, configfile)
 
     @check_initialization
+    def dump_config_values(self, filepath=None, overwrite=False):
+        """Dump all features that are read-write into a file."""
+        def value(f):
+            return f.value
+
+        self._dump_features_with(
+            value,
+            filepath,
+            overwrite,
+            feature_types=camazing.feature_types.Valuable,
+            access_modes=['rw'])
+
+    @check_initialization
     def dump_feature_info(
             self,
             filepath=None,
@@ -1032,6 +1045,15 @@ class Camera:
         **kwargs
             Keyword arguments for selecting features to dump using get_features.
         """
+        def featureinfo(f):
+            return f.info()
+
+        self._dump_features_with(featureinfo, filepath, overwrite, **kwargs)
+
+    @check_initialization
+    def _dump_features_with(self, fun, filepath=None, overwrite=False, **kwargs):
+        """Dump features into a file using a given function to pick out info."""
+
         # If `filepath` is None, dump the configuration file to the default
         # location.
         if filepath is None:
@@ -1048,7 +1070,7 @@ class Camera:
             )
             logger.error(f'Output file {filepath} already exists')
 
-        features = {k: v.info() for k, v in self.get_features(**kwargs).items()}
+        features = {k: fun(v) for k, v in self.get_features(**kwargs).items()}
 
         with open(filepath, "w") as file:
             toml.dump(features, file)  # Dump the settings to a file.
@@ -1070,7 +1092,7 @@ class Camera:
             List of feature types to include. See camazing.feature_types for
             valid values.
 
-        access_mode : list of str
+        access_modes : list of str
             Access modes to have in the result.
 
         pattern : str, optional
