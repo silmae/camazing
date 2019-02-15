@@ -960,7 +960,7 @@ class Camera:
         return os.path.join(_config_dir, configfile)
 
     @check_initialization
-    def dump_config(self, filepath=None, overwrite=False):
+    def dump_config(self, filepath=None, overwrite=False, access_mode=''):
         """Dump the current settings of the camera to a configuration file.
 
         If no `filepath` is passed as a parameter, the functions tries to write
@@ -978,6 +978,12 @@ class Camera:
 
         overwrite : bool
             True if one wishes to overwrite the existing file.
+
+        access_mode : str
+            Whether to filter properties by their access mode, with possible
+            values being 'r', 'w', and 'rw'.
+            The access mode is checked for the presence of the given string,
+            meaning that 'r' will also include any 'rw' features.
         """
         # If `filepath` is None, dump the configuration file to the default
         # location.
@@ -1005,7 +1011,7 @@ class Camera:
                        camazing.feature_types.Float,
                        camazing.feature_types.Integer)
         for feature_name, feature in self._features.items():
-            if type(feature) in valid_types and "w" in feature.access_mode:
+            if type(feature) in valid_types and access_mode in feature.access_mode:
                 settings[feature_name] = feature.value
 
         with open(filepath, "w") as file:
