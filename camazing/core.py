@@ -980,19 +980,19 @@ class Camera:
                     except ValueError as e:
                         reasons[feature] = e
                         logger.debug(
-                            (f'Try {tries[feature]} of setting feature `{feature}` failed: ',
+                            (f'Try {tries[feature]} of setting feature `{feature}` failed: '
                              f'{e}'))
                 else:
                     reasons[feature] = 'Feature was not writable.'
                     logger.debug(
-                        (f'Try {tries[feature]} of setting feature `{feature}` failed: ',
+                        (f'Try {tries[feature]} of setting feature `{feature}` failed: '
                          f'feature access mode was `{self._features[feature].access_mode}`'))
 
         # Warning if there are any unloaded feature values.
         if settings:
-            logger.warning((
-                f'Following features were not loaded due to errors:',
-                f'\n\n{settings}\n\n'))
+            logger.warning(f'The following settings were not loaded due to errors:')
+            for s, v in settings.items():
+                logger.warning(f'{s}: {v}')
         logger.info('Finished setting feature values.')
         return settings, reasons
 
