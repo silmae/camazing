@@ -960,7 +960,11 @@ class Camera:
         return os.path.join(_config_dir, configfile)
 
     @check_initialization
-    def dump_config(self, filepath=None, overwrite=False, access_mode=''):
+    def dump_config(
+            self,
+            filepath=None,
+            overwrite=False,
+            access_modes=['r', 'rw']):
         """Dump the current settings of the camera to a configuration file.
 
         If no `filepath` is passed as a parameter, the functions tries to write
@@ -979,11 +983,8 @@ class Camera:
         overwrite : bool
             True if one wishes to overwrite the existing file.
 
-        access_mode : str
-            Whether to filter properties by their access mode, with possible
-            values being 'r', 'w', and 'rw'.
-            The access mode is checked for the presence of the given string,
-            meaning that 'r' will also include any 'rw' features.
+        access_mode : list of str
+            List of access modes for filtering features to dump.
         """
         # If `filepath` is None, dump the configuration file to the default
         # location.
@@ -1001,6 +1002,30 @@ class Camera:
             )
             logging.error(f'Configuration file {filepath} already exists')
 
+        settings = self.get_features(access_modes=access_modes)
+
+        with open(filepath, "w") as file:
+            toml.dump(settings, file)  # Dump the settings to a file.
+
+        logger.info("Camera configuration dumped to `{}`".format(filepath))
+
+    @check_initialization
+    def get_features(self, access_modes=['r', 'rw'], pattern=''):
+        """Return a filtered set of features with values from the camera.
+
+        Parameters
+        ----------
+        access_mode : str
+            Access modes to have in the result.
+
+        pattern : str, optional
+            Substring that must be included in the feature name.
+
+        Returns
+        -------
+        features : dict
+            Dictionary of filtered features and their values.
+        """
         settings = {}
 
         # Iterate over camera features and select only features which are
@@ -1011,10 +1036,9 @@ class Camera:
                        camazing.feature_types.Float,
                        camazing.feature_types.Integer)
         for feature_name, feature in self._features.items():
-            if type(feature) in valid_types and access_mode in feature.access_mode:
+            if (type(feature) in valid_types and
+                    feature.access_mode in access_modes and
+                    pattern in feature_name):
                 settings[feature_name] = feature.value
 
-        with open(filepath, "w") as file:
-            toml.dump(settings, file)  # Dump the settings to a file.
-
-        logger.info("Camera configuration dumped to `{}`".format(filepath))
+        return settings
