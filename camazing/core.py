@@ -1006,12 +1006,12 @@ class Camera:
         return os.path.join(_config_dir, configfile)
 
     @check_initialization
-    def dump_config(
+    def dump_feature_info(
             self,
             filepath=None,
             overwrite=False,
-            access_modes=['r', 'rw']):
-        """Dump the current settings of the camera to a configuration file.
+            **kwargs):
+        """Dump all feature info from the camera to a configuration file.
 
         If no `filepath` is passed as a parameter, the functions tries to write
         the file to the default location. The existing file won't be
@@ -1020,7 +1020,7 @@ class Camera:
         Parameters
         ----------
         filepath : str or None, optional
-            A file path where the configuration file will be written. If
+            A file path where the file will be written. If
             ``None``, the file will be written to the default location
             with the name
             "<Vendor>_<Model>_<Serial number>_<TL type>.toml"
@@ -1029,8 +1029,8 @@ class Camera:
         overwrite : bool
             True if one wishes to overwrite the existing file.
 
-        access_mode : list of str
-            List of access modes for filtering features to dump.
+        **kwargs
+            Keyword arguments for selecting features to dump using get_features.
         """
         # If `filepath` is None, dump the configuration file to the default
         # location.
@@ -1041,27 +1041,36 @@ class Camera:
         # `True`, raise an exception.
         if os.path.isfile(filepath) and not overwrite:
             raise FileExistsError(
-                "Cannot dump camera settings to a file, because file "
+                "Cannot dump camera feature info to a file, because file "
                 "`{}` already exists.".format(filepath) +
                 "If you wan't to overwrite the existing file, set the "
                 "`overwrite` parameter to `True`."
             )
-            logger.error(f'Configuration file {filepath} already exists')
+            logger.error(f'Output file {filepath} already exists')
 
-        settings = self.get_features(access_modes=access_modes)
+        features = {k: v.info() for k, v in self.get_features(**kwargs).items()}
 
         with open(filepath, "w") as file:
-            toml.dump(settings, file)  # Dump the settings to a file.
+            toml.dump(features, file)  # Dump the settings to a file.
 
-        logger.info("Camera configuration dumped to `{}`".format(filepath))
+        logger.info("Camera feature info dumped to `{}`".format(filepath))
 
     @check_initialization
-    def get_features(self, access_modes=['r', 'rw'], pattern=''):
-        """Return a filtered set of features with values from the camera.
+    def get_features(
+            self,
+            feature_types=camazing.feature_types.Feature,
+            access_modes=['', 'w', 'r', 'rw'],
+            pattern='',
+            ):
+        """Return a filtered list of feature names.
 
         Parameters
         ----------
-        access_mode : str
+        feature_types : list
+            List of feature types to include. See camazing.feature_types for
+            valid values.
+
+        access_mode : list of str
             Access modes to have in the result.
 
         pattern : str, optional
@@ -1070,21 +1079,17 @@ class Camera:
         Returns
         -------
         features : dict
-            Dictionary of filtered features and their values.
+            Dictionary of feature names and corresponding feature objects.
         """
         settings = {}
 
         # Iterate over camera features and select only features which are
         # writable and which can be written (e.g. `Command` features don't have
         # a value).
-        valid_types = (camazing.feature_types.Boolean,
-                       camazing.feature_types.Enumeration,
-                       camazing.feature_types.Float,
-                       camazing.feature_types.Integer)
         for feature_name, feature in self._features.items():
-            if (type(feature) in valid_types and
+            if (isinstance(feature, feature_types) and
                     feature.access_mode in access_modes and
                     pattern in feature_name):
-                settings[feature_name] = feature.value
+                settings[feature_name] = feature
 
         return settings

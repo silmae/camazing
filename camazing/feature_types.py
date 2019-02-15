@@ -23,10 +23,16 @@ class Feature(abc.ABC):
         self._feature = feature
         self.name = feature.node.display_name
         self.description = feature.node.description
+        self._exclude_from_info = ['info']
+    def _getinfo(self, attr):
+            try:
+                return self.__getattribute__(attr)
+            except Exception:
+                return None
 
     def info(self):
-        return {k: self.__getattribute__(k) for k in super().__dir__()
-                if not k.startswith('_') and k is not 'info'}
+        return {k: self._getinfo(k) for k in super().__dir__()
+                if not k.startswith('_') and k not in self._exclude_from_info}
 
     @property
     def access_mode(self):
@@ -175,6 +181,7 @@ class Command(Feature):
 
     def __init__(self, feature):
         Feature.__init__(self, feature)
+        self._exclude_from_info.append('execute')
 
     def execute(self):
         self._feature.execute()
