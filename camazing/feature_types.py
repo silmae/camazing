@@ -24,6 +24,10 @@ class Feature(abc.ABC):
         self.name = feature.node.display_name
         self.description = feature.node.description
 
+    def info(self):
+        return {k: self.__getattribute__(k) for k in super().__dir__()
+                if not k.startswith('_') and k is not 'info'}
+
     @property
     def access_mode(self):
         """Get access mode of the feature.
@@ -48,7 +52,6 @@ class Feature(abc.ABC):
             return "rw"
         else:
             raise Exception("Unexpected access mode")
-
 
 class Bounded(abc.ABC):
     """A base class for features that are numeric values."""
