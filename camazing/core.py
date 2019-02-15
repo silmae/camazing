@@ -873,8 +873,8 @@ class Camera:
         return next(self._frame_generator)
 
     @check_initialization
-    def load_config(self, filepath=None):
-        """Load configuration file and apply all the settings written in the
+    def read_config(self, filepath=None):
+        """Read configuration file and apply all the settings written in the
         file to the camera.
 
         The function assumes that the `filepath` given as a parameter contains
@@ -891,6 +891,14 @@ class Camera:
             a configuration from the default directory with the name
             "<Vendor>_<Model>_<Serial number>_<TL type>.toml"
             as given by the GenICam device info.
+
+        Returns
+        -------
+        unset : dict
+            Contains any settings and their values that could not be set.
+        reasons : dict
+            Corresponding list of reasons why a given setting could not be
+            set.
 
         Raises
         ------
@@ -914,7 +922,41 @@ class Camera:
 
         with open(filepath, "r") as file:
             settings = toml.load(file)  # Load the settings from a file.
+        logger.info(f'Read list of settings from file `{filepath}`.')
 
+        return self.load_config(settings)
+
+    @check_initialization
+    def load_config(self, settings):
+        """Load a given configuration from a dictionary.
+
+        Attempt to set feature values based on a dictionary of
+        feature names and values.
+
+        Since settings may have interdependencies
+        (setting A may set B to be write-only, for example), this process
+        cannot be guaranteed to succeed even when the settings to be set
+        have previously been dumped from the camera, when the settings are set
+        in a unknown order. For this reason, the default behaviour is to loop
+        through the given settings and attempt to set each value in order, until
+        all the remaining settings are non-writable. Tries to get a value set are
+        logged and can be seen by using a logger with level DEBUG.
+
+        Parameters
+        ----------
+        settings : dict
+            Dictionary of feature names and values.
+
+        Returns
+        -------
+        unmodified settings : dict
+            Subset of the original dictionary containing settings which could not
+            be set even after iteration.
+        reasons : dict
+            Dictionary of unset feature names and reasons why they could not be set
+            (in the final iteration).
+
+        """
         # The following `while` loop probably needs some explanation. We cannot
         # just apply settings in the order they appear in the configuration
         # file. For example, if `Gain = 5` appears before `GainAuto = "Off"`,
@@ -923,32 +965,36 @@ class Camera:
         # currently writable. When `GainAuto` is applied on first iteration,
         # we can apply `Gain` on the next iteration, etc.
         modified = True
-        errors = []
+        tries = dict(zip(settings.keys(), len(settings) * [0]))
+        reasons = {}
         while modified:
             modified = False
             for feature in list(settings):
+                tries[feature] = tries[feature] + 1
+                logger.debug(f'Try {tries[feature]}: Setting feature `{feature}`')
                 if "w" in self._features[feature].access_mode:
                     try:
                         self._features[feature].value = settings[feature]
                         settings.pop(feature)
                         modified = True
                     except ValueError as e:
-                        errors.append(e)
-                        logging.warning(f'Could not set value while iterating config file: {e}')
+                        reasons[feature] = e
+                        logger.debug(
+                            (f'Try {tries[feature]} of setting feature `{feature}` failed: ',
+                             f'{e}'))
+                else:
+                    reasons[feature] = 'Feature was not writable.'
+                    logger.debug(
+                        (f'Try {tries[feature]} of setting feature `{feature}` failed: ',
+                         f'feature access mode was `{self._features[feature].access_mode}`'))
 
         # Warning if there are any unloaded feature values.
         if settings:
-            logging.warning(
-                f"Couldn't load the values of the following "
-                f"features:\n\n{settings}\n\nThese features don't seem to be "
-                "writable after loading all the other settings.")
-        if errors:
-            logging.warning(
-                f"Got following errors while trying set values "
-                f"from the config file:"
-                f"\n\n{errors}")
-
-        logging.info(f'Finished loading settings from `{filepath}`.')
+            logger.warning((
+                f'Following features were not loaded due to errors:',
+                f'\n\n{settings}\n\n'))
+        logger.info('Finished setting feature values.')
+        return settings, reasons
 
     def _default_config(self):
         configfile = '_'.join(
@@ -1000,7 +1046,7 @@ class Camera:
                 "If you wan't to overwrite the existing file, set the "
                 "`overwrite` parameter to `True`."
             )
-            logging.error(f'Configuration file {filepath} already exists')
+            logger.error(f'Configuration file {filepath} already exists')
 
         settings = self.get_features(access_modes=access_modes)
 
