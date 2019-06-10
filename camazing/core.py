@@ -872,7 +872,6 @@ class Camera:
 
         return next(self._frame_generator)
 
-    @check_initialization
     def read_config_from_file(self, filepath=None):
         """Read configuration file and return it as a dict.
 
@@ -925,7 +924,34 @@ class Camera:
         return settings
 
     @check_initialization
-    def load_config(self, settings):
+    def load_config_from_file(self, filepath=None):
+        """Reads and immediately loads a config from a file.
+
+        See `read_config_from_file` and `load_config_from_dict` for more info.
+
+        Parameters
+        ----------
+        filepath : str or None, optional
+            A file path to a TOML configuration file containing user given
+            settings for the camera. If not given, will attempt to find
+            a configuration from the default directory with the name
+            "<Vendor>_<Model>_<Serial number>_<TL type>.toml"
+            as given by the GenICam device info.
+
+        Returns
+        -------
+        unmodified settings : dict
+            Subset of the original dictionary containing settings which could not
+            be set even after iteration.
+        reasons : dict
+            Dictionary of unset feature names and reasons why they could not be set
+            (in the final iteration).
+
+        """
+
+
+    @check_initialization
+    def load_config_from_dict(self, settings):
         """Load a given configuration from a dictionary.
 
         Attempt to set feature values based on a dictionary of
