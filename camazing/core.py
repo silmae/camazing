@@ -1030,17 +1030,45 @@ class Camera:
         return os.path.join(_config_dir, configfile)
 
     @check_initialization
-    def dump_config_values(self, filepath=None, overwrite=False):
-        """Dump all features that are read-write into a file."""
+
+    def save_config_to_file(self, filepath=None, overwrite=False, **kwargs):
+        """Save current camera configuration to a file.
+
+        Tries to save all accessible camera features and their values to a
+        file. By default only features that are set to read-write are included.
+        If you want to include parameters that are read-only or write-only, pass
+        access_modes=['r', 'w', 'rw'] or variants thereof. See `get_features`
+        for other ways to select camera features.
+
+        Parameters
+        ----------
+        filepath : str
+            File to save the config to. Default None (will try to use default 
+            config location for the camera, see `_default_config`.
+
+        overwrite : bool
+            Whether to overwrite existing configuration file, if it exists.
+
+        **kwargs
+            Keyword arguments passed to get_features, used to select config
+            features. By default only includes features with readable and 
+            writable values.
+        """
         def value(f):
             return f.value
 
-        self._dump_features_with(
+        get_feature_args = dict(
+            feature_types=camazing.feature_types.Valuable,
+            access_modes=access_modes
+            )
+        get_feature_args.update(kwargs)
+
+        self._dump_features_to_file_with(
             value,
             filepath,
             overwrite,
-            feature_types=camazing.feature_types.Valuable,
-            access_modes=['rw'])
+            **get_feature_args,
+            )
 
     @check_initialization
     def dump_feature_info(
@@ -1072,11 +1100,25 @@ class Camera:
         def featureinfo(f):
             return f.info()
 
-        self._dump_features_with(featureinfo, filepath, overwrite, **kwargs)
+        self._dump_features_to_file_with(featureinfo, filepath, overwrite, **kwargs)
 
     @check_initialization
-    def _dump_features_with(self, fun, filepath=None, overwrite=False, **kwargs):
-        """Dump features into a file using a given function to pick out info."""
+    def _dump_features_to_file_with(self, fun, filepath=None, overwrite=False, **kwargs):
+        """Dump features into a file using a given function to pick out info.
+
+        Parameters
+        ----------
+        fun : func
+            Function to apply to each feature that extracts the info to be dumped.
+            Must return a value serializable to toml.
+
+        filepath : str
+            File to dump the features to. Default None (will try to pick 
+            default config file, see `_default_config`).
+
+        overwrite : bool
+            Whether to overwrite the given file if it already exists.
+        """
 
         # If `filepath` is None, dump the configuration file to the default
         # location.
