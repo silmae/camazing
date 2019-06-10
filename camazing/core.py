@@ -950,7 +950,9 @@ class Camera:
             (in the final iteration).
 
         """
-
+        return self.load_config_from_dict(
+                self.read_config_from_file(filepath=filepath)
+                )
 
     @check_initialization
     def load_config_from_dict(self, settings):
