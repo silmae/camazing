@@ -6,6 +6,7 @@ import os
 import platform
 import urllib
 import sys
+from functools import wraps
 
 import appdirs
 import genicam2.gentl as gtl
@@ -50,6 +51,7 @@ def check_initialization(method):
         Cameras `method.
     """
     # If camera is not initialized, raise an error.
+    @wraps(method)
     def wrapper(self, *args, **kwargs):
         if not self.is_initialized():
             raise RuntimeError(
