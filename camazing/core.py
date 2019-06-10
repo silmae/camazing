@@ -873,9 +873,8 @@ class Camera:
         return next(self._frame_generator)
 
     @check_initialization
-    def read_config(self, filepath=None):
-        """Read configuration file and apply all the settings written in the
-        file to the camera.
+    def read_config_from_file(self, filepath=None):
+        """Read configuration file and return it as a dict.
 
         The function assumes that the `filepath` given as a parameter contains
         a TOML configuration file (doesn't check the file extension) and starts
@@ -894,11 +893,8 @@ class Camera:
 
         Returns
         -------
-        unset : dict
-            Contains any settings and their values that could not be set.
-        reasons : dict
-            Corresponding list of reasons why a given setting could not be
-            set.
+        dict
+            Dictionary of camera settings and their values.
 
         Raises
         ------
@@ -919,12 +915,14 @@ class Camera:
         # location.
         if filepath is None:
             filepath = self._default_config()
+            logger.info(
+                'No config file given. Trying {filepath} for default config.')
 
         with open(filepath, "r") as file:
             settings = toml.load(file)  # Load the settings from a file.
         logger.info(f'Read list of settings from file `{filepath}`.')
 
-        return self.load_config(settings)
+        return settings
 
     @check_initialization
     def load_config(self, settings):
