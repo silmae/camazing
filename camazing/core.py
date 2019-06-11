@@ -288,6 +288,10 @@ class CameraList(metaclass=Singleton):
                 device_info.tl_type
             ])
 
+    @property
+    def cti_file():
+        return self._cti_file
+
 
 class Camera:
 
