@@ -289,7 +289,8 @@ class CameraList(metaclass=Singleton):
             ])
 
     @property
-    def cti_file():
+    def cti_file(self):
+        """CTI file used to detect cameras."""
         return self._cti_file
 
 
