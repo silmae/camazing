@@ -8,7 +8,6 @@ import urllib
 import sys
 from functools import wraps
 
-import appdirs
 import genicam2.gentl as gtl
 import genicam2.genapi as gapi
 import numpy as np
@@ -25,13 +24,6 @@ if sys.version_info >= (3, 7):
     import zipfile36 as zipfile
 else:
     import zipfile
-
-# Define a default configuration directory using appdirs.
-_config_dir = appdirs.user_config_dir("camazing", False, None, False)
-
-# If directory for configuration file doesn't exist, create it.
-if not os.path.isdir(_config_dir):
-    os.makedirs(_config_dir)
 
 # Initialize the logger.
 logger = logging.getLogger(__name__)
@@ -912,33 +904,22 @@ class Camera:
         configuration file contains very few general settings, it's very
         likely that the file works with multiple cameras.
         """
-        # If `filepath` is None, load the configuration file from the default
-        # location.
-        if filepath is None:
-            filepath = self._default_config()
-            logger.info(
-                'No config file given. Trying {filepath} for default config.')
-
         with open(filepath, "r") as file:
             settings = toml.load(file)  # Load the settings from a file.
         logger.info(f'Read list of settings from file `{filepath}`.')
 
         return settings
 
-    @check_initialization
-    def load_config_from_file(self, filepath=None):
+    def load_config_from_file(self, filepath):
         """Reads and immediately loads a config from a file.
 
         See `read_config_from_file` and `load_config_from_dict` for more info.
 
         Parameters
         ----------
-        filepath : str or None, optional
+        filepath : str
             A file path to a TOML configuration file containing user given
-            settings for the camera. If not given, will attempt to find
-            a configuration from the default directory with the name
-            "<Vendor>_<Model>_<Serial number>_<TL type>.toml"
-            as given by the GenICam device info.
+            settings for the camera.
 
         Returns
         -------
@@ -1024,18 +1005,8 @@ class Camera:
         logger.info('Finished setting feature values.')
         return settings, reasons
 
-    def _default_config(self):
-        configfile = '_'.join(
-            [self._device_info.vendor,
-             self._device_info.model,
-             self._device_info.serial_number,
-             self._device_info.tl_type]
-             ) + '.toml'
-        return os.path.join(_config_dir, configfile)
-
     @check_initialization
-
-    def save_config_to_file(self, filepath=None, overwrite=False, **kwargs):
+    def save_config_to_file(self, filepath, overwrite=False, **kwargs):
         """Save current camera configuration to a file.
 
         Tries to save all accessible camera features and their values to a
@@ -1047,8 +1018,7 @@ class Camera:
         Parameters
         ----------
         filepath : str
-            File to save the config to. Default None (will try to use default 
-            config location for the camera, see `_default_config`.
+            File to save the config to.
 
         overwrite : bool
             Whether to overwrite existing configuration file, if it exists.
@@ -1077,7 +1047,7 @@ class Camera:
     @check_initialization
     def dump_feature_info(
             self,
-            filepath=None,
+            filepath,
             overwrite=False,
             **kwargs):
         """Dump all feature info from the camera to a configuration file.
@@ -1089,11 +1059,7 @@ class Camera:
         Parameters
         ----------
         filepath : str or None, optional
-            A file path where the file will be written. If
-            ``None``, the file will be written to the default location
-            with the name
-            "<Vendor>_<Model>_<Serial number>_<TL type>.toml"
-            as given by the GenICam device info.
+            A file path where the file will be written.
 
         overwrite : bool
             True if one wishes to overwrite the existing file.
@@ -1107,7 +1073,7 @@ class Camera:
         self._dump_features_to_file_with(featureinfo, filepath, overwrite, **kwargs)
 
     @check_initialization
-    def _dump_features_to_file_with(self, fun, filepath=None, overwrite=False, **kwargs):
+    def _dump_features_to_file_with(self, fun, filepath, overwrite=False, **kwargs):
         """Dump features into a file using a given function to pick out info.
 
         Parameters
@@ -1117,17 +1083,11 @@ class Camera:
             Must return a value serializable to toml.
 
         filepath : str
-            File to dump the features to. Default None (will try to pick 
-            default config file, see `_default_config`).
+            File to dump the features to.
 
         overwrite : bool
             Whether to overwrite the given file if it already exists.
         """
-
-        # If `filepath` is None, dump the configuration file to the default
-        # location.
-        if filepath is None:
-            filepath = self._default_config()
 
         # If file exists with and `overwrite` parameter is not set to "
         # `True`, raise an exception.
