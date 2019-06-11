@@ -77,14 +77,16 @@ def get_cti_file():
     logger.debug("Trying to find the CTI file automatically...")
 
     arch = platform.architecture()[0]  # Get the platform architecture.
+    logger.debug(f"Platform architecture detected as {arch}")
     var = "GENICAM_GENTL64_PATH" if arch == "64bit" else "GENICAM_GENTL32_PATH"
-    dir = os.getenv(var)  # Get the directory path in the environment variable.
+    ctidir = os.getenv(var)  # Get the directory path in the environment variable.
+    logger.debug(f"Looking for the CTI file in directory {ctidir}")
 
-    if dir:  # Check that the environment variable contains the directory path.
-        for file in os.listdir(dir):
+    if ctidir:  # Check that the environment variable contains the directory path.
+        for ctifile in os.listdir(ctidir):
             # If `file` has extension `.cti`, we have found the CTI file.
-            if file.endswith(".cti"):
-                filepath = os.path.join(dir, file)
+            if ctifile.endswith(".cti"):
+                filepath = os.path.join(ctidir, ctifile)
                 logger.debug(
                     "Automatic lookup of CTI file was successful. Found "
                     "CTI file `{}` from environment variable `{}`.".format(
