@@ -1035,7 +1035,7 @@ class Camera:
 
         get_feature_args = dict(
             feature_types=camazing.feature_types.Valuable,
-            access_modes=access_modes
+            access_modes=['rw'],
             )
         get_feature_args.update(kwargs)
 
