@@ -257,25 +257,23 @@ exceeded.
 ## Configuration (dumping and loading settings)
 
 In the simplest case, you can dump the current settings of the camera to a
-configuration file in OS specific default location with method 
+configuration file using
 ```python
->>> camera.dump_config()
+>>> camera.save_config_to_file(<filename>)
 ```
-The location of configuration file will be determined by the [`appdirs`]()
-package. If you don't know the default location in your OS, be sure to check the
-documentation of the package, and especially the `user_config_dir` function.
-camazing *won't overwrite existing files, unless the you
+Camazing *won't overwrite existing files, unless the you
 explicitly tells it to do so*. If you really want to overwrite an existing
 configuration file, the `overwrite` parameter has to be set to `True`:
 ```python
->>> camera.dump_config(overwrite=True)
+>>> camera.save_config_to_file(<filename>, overwrite=True)
 ```
 The configuration file can be loaded with the following method:
 ```python
->>> camera.load_config()
+>>> not_applied, errors = camera.load_config_from_file(<filename>)
 ```
-A config which was previously dumped to a file, and which is not manually modified after that, should be loaded without a hassle.
-If any setting cannot be applied, camazing should raise a warning.
+A config which was previously dumped to a file, and which is not manually modified after that, should be loaded without a hassle. The load function returns two dictionaries,
+one containing the settings that could not be loaded to the camera, and the second
+containing the associated exceptions with corresponding keys.
 
 Of course, you're free to write your configuration files by hand. camazing uses
 [TOML](https://github.com/toml-lang/toml) as its configuration language.  If
