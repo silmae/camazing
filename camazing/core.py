@@ -6,8 +6,8 @@ import os
 import platform
 import urllib
 import sys
+from functools import wraps
 
-import appdirs
 import genicam2.gentl as gtl
 import genicam2.genapi as gapi
 import numpy as np
@@ -24,13 +24,6 @@ if sys.version_info >= (3, 7):
     import zipfile36 as zipfile
 else:
     import zipfile
-
-# Define a default configuration directory using appdirs.
-_config_dir = appdirs.user_config_dir("camazing", False, None, False)
-
-# If directory for configuration file doesn't exist, create it.
-if not os.path.isdir(_config_dir):
-    os.makedirs(_config_dir)
 
 # Initialize the logger.
 logger = logging.getLogger(__name__)
@@ -50,6 +43,7 @@ def check_initialization(method):
         Cameras `method.
     """
     # If camera is not initialized, raise an error.
+    @wraps(method)
     def wrapper(self, *args, **kwargs):
         if not self.is_initialized():
             raise RuntimeError(
@@ -83,14 +77,16 @@ def get_cti_file():
     logger.debug("Trying to find the CTI file automatically...")
 
     arch = platform.architecture()[0]  # Get the platform architecture.
+    logger.debug(f"Platform architecture detected as {arch}")
     var = "GENICAM_GENTL64_PATH" if arch == "64bit" else "GENICAM_GENTL32_PATH"
-    dir = os.getenv(var)  # Get the directory path in the environment variable.
+    ctidir = os.getenv(var)  # Get the directory path in the environment variable.
+    logger.debug(f"Looking for the CTI file in directory {ctidir}")
 
-    if dir:  # Check that the environment variable contains the directory path.
-        for file in os.listdir(dir):
+    if ctidir:  # Check that the environment variable contains the directory path.
+        for ctifile in os.listdir(ctidir):
             # If `file` has extension `.cti`, we have found the CTI file.
-            if file.endswith(".cti"):
-                filepath = os.path.join(dir, file)
+            if ctifile.endswith(".cti"):
+                filepath = os.path.join(ctidir, ctifile)
                 logger.debug(
                     "Automatic lookup of CTI file was successful. Found "
                     "CTI file `{}` from environment variable `{}`.".format(
@@ -291,6 +287,11 @@ class CameraList(metaclass=Singleton):
                 device_info.serial_number,
                 device_info.tl_type
             ])
+
+    @property
+    def cti_file(self):
+        """CTI file used to detect cameras."""
+        return self._cti_file
 
 
 class Camera:
@@ -872,10 +873,8 @@ class Camera:
 
         return next(self._frame_generator)
 
-    @check_initialization
-    def load_config(self, filepath=None):
-        """Load configuration file and apply all the settings written in the
-        file to the camera.
+    def read_config_from_file(self, filepath=None):
+        """Read configuration file and return it as a dict.
 
         The function assumes that the `filepath` given as a parameter contains
         a TOML configuration file (doesn't check the file extension) and starts
@@ -892,6 +891,11 @@ class Camera:
             "<Vendor>_<Model>_<Serial number>_<TL type>.toml"
             as given by the GenICam device info.
 
+        Returns
+        -------
+        dict
+            Dictionary of camera settings and their values.
+
         Raises
         ------
         FileNotFoundError
@@ -907,14 +911,68 @@ class Camera:
         configuration file contains very few general settings, it's very
         likely that the file works with multiple cameras.
         """
-        # If `filepath` is None, load the configuration file from the default
-        # location.
-        if filepath is None:
-            filepath = self._default_config()
-
         with open(filepath, "r") as file:
             settings = toml.load(file)  # Load the settings from a file.
+        logger.info(f'Read list of settings from file `{filepath}`.')
 
+        return settings
+
+    def load_config_from_file(self, filepath):
+        """Reads and immediately loads a config from a file.
+
+        See `read_config_from_file` and `load_config_from_dict` for more info.
+
+        Parameters
+        ----------
+        filepath : str
+            A file path to a TOML configuration file containing user given
+            settings for the camera.
+
+        Returns
+        -------
+        unmodified settings : dict
+            Subset of the original dictionary containing settings which could not
+            be set even after iteration.
+        reasons : dict
+            Dictionary of unset feature names and reasons why they could not be set
+            (in the final iteration).
+
+        """
+        return self.load_config_from_dict(
+                self.read_config_from_file(filepath=filepath)
+                )
+
+    @check_initialization
+    def load_config_from_dict(self, settings):
+        """Load a given configuration from a dictionary.
+
+        Attempt to set feature values based on a dictionary of
+        feature names and values.
+
+        Since settings may have interdependencies
+        (setting A may set B to be write-only, for example), this process
+        cannot be guaranteed to succeed even when the settings to be set
+        have previously been dumped from the camera, when the settings are set
+        in a unknown order. For this reason, the default behaviour is to loop
+        through the given settings and attempt to set each value in order, until
+        all the remaining settings are non-writable. Tries to get a value set are
+        logged and can be seen by using a logger with level DEBUG.
+
+        Parameters
+        ----------
+        settings : dict
+            Dictionary of feature names and values.
+
+        Returns
+        -------
+        unmodified settings : dict
+            Subset of the original dictionary containing settings which could not
+            be set even after iteration.
+        reasons : dict
+            Dictionary of unset feature names and reasons why they could not be set
+            (in the final iteration).
+
+        """
         # The following `while` loop probably needs some explanation. We cannot
         # just apply settings in the order they appear in the configuration
         # file. For example, if `Gain = 5` appears before `GainAuto = "Off"`,
@@ -923,45 +981,83 @@ class Camera:
         # currently writable. When `GainAuto` is applied on first iteration,
         # we can apply `Gain` on the next iteration, etc.
         modified = True
-        errors = []
+        tries = dict(zip(settings.keys(), len(settings) * [0]))
+        reasons = {}
         while modified:
             modified = False
             for feature in list(settings):
+                tries[feature] = tries[feature] + 1
+                logger.debug(f'Try {tries[feature]}: Setting feature `{feature}`')
                 if "w" in self._features[feature].access_mode:
                     try:
                         self._features[feature].value = settings[feature]
                         settings.pop(feature)
                         modified = True
                     except ValueError as e:
-                        errors.append(e)
-                        logging.warning(f'Could not set value while iterating config file: {e}')
+                        reasons[feature] = e
+                        logger.debug(
+                            (f'Try {tries[feature]} of setting feature `{feature}` failed: '
+                             f'{e}'))
+                else:
+                    reasons[feature] = 'Feature was not writable.'
+                    logger.debug(
+                        (f'Try {tries[feature]} of setting feature `{feature}` failed: '
+                         f'feature access mode was `{self._features[feature].access_mode}`'))
 
         # Warning if there are any unloaded feature values.
         if settings:
-            logging.warning(
-                f"Couldn't load the values of the following "
-                f"features:\n\n{settings}\n\nThese features don't seem to be "
-                "writable after loading all the other settings.")
-        if errors:
-            logging.warning(
-                f"Got following errors while trying set values "
-                f"from the config file:"
-                f"\n\n{errors}")
-
-        logging.info(f'Finished loading settings from `{filepath}`.')
-
-    def _default_config(self):
-        configfile = '_'.join(
-            [self._device_info.vendor,
-             self._device_info.model,
-             self._device_info.serial_number,
-             self._device_info.tl_type]
-             ) + '.toml'
-        return os.path.join(_config_dir, configfile)
+            logger.warning(f'The following settings were not loaded due to errors:')
+            for s, v in settings.items():
+                logger.warning(f'{s}: {v}')
+        logger.info('Finished setting feature values.')
+        return settings, reasons
 
     @check_initialization
-    def dump_config(self, filepath=None, overwrite=False):
-        """Dump the current settings of the camera to a configuration file.
+    def save_config_to_file(self, filepath, overwrite=False, **kwargs):
+        """Save current camera configuration to a file.
+
+        Tries to save all accessible camera features and their values to a
+        file. By default only features that are set to read-write are included.
+        If you want to include parameters that are read-only or write-only, pass
+        access_modes=['r', 'w', 'rw'] or variants thereof. See `get_features`
+        for other ways to select camera features.
+
+        Parameters
+        ----------
+        filepath : str
+            File to save the config to.
+
+        overwrite : bool
+            Whether to overwrite existing configuration file, if it exists.
+
+        **kwargs
+            Keyword arguments passed to get_features, used to select config
+            features. By default only includes features with readable and 
+            writable values.
+        """
+        def value(f):
+            return f.value
+
+        get_feature_args = dict(
+            feature_types=camazing.feature_types.Valuable,
+            access_modes=['rw'],
+            )
+        get_feature_args.update(kwargs)
+
+        self._dump_features_to_file_with(
+            value,
+            filepath,
+            overwrite,
+            **get_feature_args,
+            )
+
+    @check_initialization
+    def dump_feature_info(
+            self,
+            filepath,
+            overwrite=False,
+            **kwargs):
+        """Dump all feature info from the camera to a configuration file.
 
         If no `filepath` is passed as a parameter, the functions tries to write
         the file to the default location. The existing file won't be
@@ -970,45 +1066,89 @@ class Camera:
         Parameters
         ----------
         filepath : str or None, optional
-            A file path where the configuration file will be written. If
-            ``None``, the file will be written to the default location
-            with the name
-            "<Vendor>_<Model>_<Serial number>_<TL type>.toml"
-            as given by the GenICam device info.
+            A file path where the file will be written.
 
         overwrite : bool
             True if one wishes to overwrite the existing file.
+
+        **kwargs
+            Keyword arguments for selecting features to dump using get_features.
         """
-        # If `filepath` is None, dump the configuration file to the default
-        # location.
-        if filepath is None:
-            filepath = self._default_config()
+        def featureinfo(f):
+            return f.info()
+
+        self._dump_features_to_file_with(featureinfo, filepath, overwrite, **kwargs)
+
+    @check_initialization
+    def _dump_features_to_file_with(self, fun, filepath, overwrite=False, **kwargs):
+        """Dump features into a file using a given function to pick out info.
+
+        Parameters
+        ----------
+        fun : func
+            Function to apply to each feature that extracts the info to be dumped.
+            Must return a value serializable to toml.
+
+        filepath : str
+            File to dump the features to.
+
+        overwrite : bool
+            Whether to overwrite the given file if it already exists.
+        """
 
         # If file exists with and `overwrite` parameter is not set to "
         # `True`, raise an exception.
         if os.path.isfile(filepath) and not overwrite:
             raise FileExistsError(
-                "Cannot dump camera settings to a file, because file "
+                "Cannot dump camera feature info to a file, because file "
                 "`{}` already exists.".format(filepath) +
                 "If you wan't to overwrite the existing file, set the "
                 "`overwrite` parameter to `True`."
             )
-            logging.error(f'Configuration file {filepath} already exists')
+            logger.error(f'Output file {filepath} already exists')
 
+        features = {k: fun(v) for k, v in self.get_features(**kwargs).items()}
+
+        with open(filepath, "w") as file:
+            toml.dump(features, file)  # Dump the settings to a file.
+
+        logger.info("Camera feature info dumped to `{}`".format(filepath))
+
+    @check_initialization
+    def get_features(
+            self,
+            feature_types=camazing.feature_types.Feature,
+            access_modes=['', 'w', 'r', 'rw'],
+            pattern='',
+            ):
+        """Return a filtered list of feature names.
+
+        Parameters
+        ----------
+        feature_types : list
+            List of feature types to include. See camazing.feature_types for
+            valid values.
+
+        access_modes : list of str
+            Access modes to have in the result.
+
+        pattern : str, optional
+            Substring that must be included in the feature name.
+
+        Returns
+        -------
+        features : dict
+            Dictionary of feature names and corresponding feature objects.
+        """
         settings = {}
 
         # Iterate over camera features and select only features which are
         # writable and which can be written (e.g. `Command` features don't have
         # a value).
-        valid_types = (camazing.feature_types.Boolean,
-                       camazing.feature_types.Enumeration,
-                       camazing.feature_types.Float,
-                       camazing.feature_types.Integer)
         for feature_name, feature in self._features.items():
-            if type(feature) in valid_types and "w" in feature.access_mode:
-                settings[feature_name] = feature.value
+            if (isinstance(feature, feature_types) and
+                    feature.access_mode in access_modes and
+                    pattern in feature_name):
+                settings[feature_name] = feature
 
-        with open(filepath, "w") as file:
-            toml.dump(settings, file)  # Dump the settings to a file.
-
-        logger.info("Camera configuration dumped to `{}`".format(filepath))
+        return settings
