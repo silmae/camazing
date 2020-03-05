@@ -1,6 +1,0 @@
-genicam2
-numpy
-xarray
-toml
-tabulate
-zipfile36
