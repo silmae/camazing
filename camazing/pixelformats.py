@@ -88,7 +88,7 @@ _ranges = {
     'BayerRG8': np.uint8([0, 255]),
     'BayerGB8': np.uint8([0, 255]),
     'BayerGB12': np.uint16([0, 4095]),
-    'BayerRB12': np.uint16([0, 4095]),
+    'BayerRG12': np.uint16([0, 4095]),
     'BayerRG16': np.uint16([0, 65535]),
     'RGB8': np.uint8([0, 255]),
     'Mono8': np.uint8([0, 255]),
