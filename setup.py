@@ -17,7 +17,7 @@ requirements = [
 
 setuptools.setup(
     name="camazing",
-    version="0.1dev",
+    version="0.9",
     description="Machine vision library for GenICam-compliant cameras",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -28,7 +28,7 @@ setuptools.setup(
     licence="MIT licence",
     install_requires=requirements,
     classifiers=(
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 4 - Beta",
         "Environment :: Console",
         "Intented Audience :: Developers",
         "Intented Audience :: Science/Research",
