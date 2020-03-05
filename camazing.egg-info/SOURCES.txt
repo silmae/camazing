@@ -1,0 +1,12 @@
+README.md
+setup.py
+camazing/__init__.py
+camazing/core.py
+camazing/feature_types.py
+camazing/pixelformats.py
+camazing/util.py
+camazing.egg-info/PKG-INFO
+camazing.egg-info/SOURCES.txt
+camazing.egg-info/dependency_links.txt
+camazing.egg-info/requires.txt
+camazing.egg-info/top_level.txt
