@@ -41,7 +41,15 @@ can be provided to `CameraList` object manually.
 
 ## Installation using `pip`
 
-TODO
+For normal use, direct installation from pip should work fine:
+
+> pip install camazing
+
+### Note on GeniCam bindings and Python 3.8 on Windows
+
+Currently `camazing` relies on the genicam2 Python bindings which do not seem
+to available for Python 3.8 on Windows, requiring the use of Python 3.7 or
+earlier.
 
 ## Usage
 
