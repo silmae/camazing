@@ -15,6 +15,16 @@ requirements = [
     "zipfile36",
 ]
 
+extras_requirements = {
+    'doc': [
+        'sphinx',
+        'sphinxcontrib-napoleon',
+        'sphinx-rtd-theme',
+        'sphinx-markdown-tables',
+        'recommonmark',
+        ]
+    }
+
 setuptools.setup(
     name="camazing",
     version="0.9",
@@ -27,6 +37,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     licence="MIT licence",
     install_requires=requirements,
+    extras_require=extras_requirements,
     classifiers=(
         "Development Status :: 4 - Beta",
         "Environment :: Console",

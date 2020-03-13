@@ -39,7 +39,15 @@ can be provided to `CameraList` object manually.
 
 For normal use, direct installation from pip should work fine:
 
-> pip install camazing
+> `pip install camazing`
+
+For development, you should clone the repository from git and install it using
+development mode with the command
+
+> `pip install -e .[doc]`
+
+This also installs the necessary packages for building the documentation
+locally with `cd docs && make html`.
 
 ### Note on GeniCam bindings and Python 3.8 on Windows
 
