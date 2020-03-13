@@ -15,6 +15,7 @@ Welcome to camazing's documentation!
    settings
    features
    modules
+   acknowledgements
 
 Indices and tables
 ==================
