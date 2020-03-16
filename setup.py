@@ -41,9 +41,9 @@ setuptools.setup(
     classifiers=(
         "Development Status :: 4 - Beta",
         "Environment :: Console",
-        "Intented Audience :: Developers",
-        "Intented Audience :: Science/Research",
-        "Licence :: OSI Approved :: MIT Licence",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: MIT License",
         "Natural Language :: English",
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
