@@ -16,7 +16,7 @@ requirements = [
 ]
 
 extras_requirements = {
-    'doc': [
+    'docs': [
         'sphinx',
         'sphinxcontrib-napoleon',
         'sphinx-rtd-theme',
