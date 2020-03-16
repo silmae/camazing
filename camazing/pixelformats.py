@@ -30,8 +30,8 @@ def get_valid_range(pxformat):
 def get_decoder(pxformat):
     """Return a numpy decoder for a given GenICam pixel format.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     pxformat: str
         Pixel format as given by cameras PixelFormat.
 

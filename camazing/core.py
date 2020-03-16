@@ -34,13 +34,21 @@ class AcquisitionException(Exception):
 
 
 def check_initialization(method):
-    """Decorator function, that checks `Camera` object is initialized
-    before executing `Camera` `method`.
+    """Decorator for checking camera initialization.
+
+    Checks that the `Camera` object is initialized by calling `is_initialized`
+    before executing the given method.
 
     Parameters
     ----------
     method : method
-        Cameras `method.
+        Method to execute with checks.
+
+    Raises
+    ------
+    RuntimeError
+        Raised when Camera is not initialized.
+
     """
     # If camera is not initialized, raise an error.
     @wraps(method)
