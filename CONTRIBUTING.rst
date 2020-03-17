@@ -37,7 +37,7 @@ Ready to contribute? Here's how to set up `camazing` for local development.
     $ git commit -m "Your detailed description of your changes."
     $ git push origin name-of-your-bugfix-or-feature
 
-   Remember to include a note in [the changelog](CHANGES.rst) and add relevant
+   Remember to include a note in CHANGELOG.rst and add relevant
    documentation.
 
 6. Submit a pull request through the GitHub website.
