@@ -49,7 +49,7 @@ development mode with the command
 This also installs the necessary packages for building the documentation
 locally with `cd docs && make html`.
 
-### Note on GeniCam bindings and Python 3.8 on Windows
+### Note on GenICam bindings and Python 3.8 on Windows
 
 Currently `camazing` relies on the genicam2 Python bindings which do not seem
 to available for Python 3.8 on Windows, requiring the use of Python 3.7 or
