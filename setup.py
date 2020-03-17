@@ -33,12 +33,12 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     author="Severi Jääskeläinen",
     author_email="severi.jaaskelainen@gmail.com",
-    url="",
+    url="https://github.com/silmae/camazing",
     packages=setuptools.find_packages(),
-    licence="MIT licence",
+    license="MIT licence",
     install_requires=requirements,
     extras_require=extras_requirements,
-    classifiers=(
+    classifiers=[
         "Development Status :: 4 - Beta",
         "Environment :: Console",
         "Intended Audience :: Developers",
@@ -48,5 +48,5 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
         "Topic :: Software Development :: Libraries :: Python Modules",
-    )
+    ]
 )
