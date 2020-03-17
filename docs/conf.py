@@ -22,7 +22,7 @@ copyright = '2020, The camazing developers'
 author = 'The camazing developers'
 
 # The full version, including alpha/beta/rc tags
-release = '0.9'
+release = '0.9.0'
 
 
 # -- General configuration ---------------------------------------------------

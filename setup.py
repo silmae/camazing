@@ -27,7 +27,7 @@ extras_requirements = {
 
 setuptools.setup(
     name="camazing",
-    version="0.9",
+    version="0.9.0",
     description="Machine vision library for GenICam-compliant cameras",
     long_description=long_description,
     long_description_content_type="text/markdown",
