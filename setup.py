@@ -32,7 +32,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Severi Jääskeläinen",
-    author_email="severij@tuta.io",
+    author_email="severi.jaaskelainen@gmail.com",
     url="",
     packages=setuptools.find_packages(),
     licence="MIT licence",

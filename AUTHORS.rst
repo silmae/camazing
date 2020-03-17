@@ -2,9 +2,9 @@
 Authors
 =======
 
-Developed at the Spectral Imaging Laboratory of the
-Faculty of Information Technology in the University of Jyväskylä by
+Developed at the Spectral Imaging Laboratory, Faculty of Information Technology
+in University of Jyväskylä by
 
-* Severi Jääskeläinen <severij@tuta.io>
+* Severi Jääskeläinen <severi.jaaskelainen@gmail.com>
 * Matti A. Eskelinen <matti.a.eskelinen@gmail.com>
 * Anna-Maria Hakola <amhakola@gmail.com>
